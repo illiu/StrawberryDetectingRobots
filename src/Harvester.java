@@ -99,7 +99,7 @@ public class Harvester {
 	    	}
 	    }
 	    //System.out.println(mask.channels());
-	    mask = nearestNeighbor(mask);
+	    //mask = nearestNeighbor(mask);
 		return mask;
 	}
 	Mat nearestNeighbor(Mat mask) // Use NN to fill in holes of the binary mask
@@ -211,6 +211,10 @@ public class Harvester {
 			Mat tempM = new Mat(); 
 			tempM.create(Boss.gradientMat.rows(),Boss.gradientMat.cols(), 1);
 			tempM.setTo(Scalar.all(100));
+			
+			Mat tempM2 = new Mat(); 
+			tempM2.create(Boss.gradientMat.rows(),Boss.gradientMat.cols(), 1);
+			tempM2.setTo(Scalar.all(100));
 			// delete above when done
 	
 			// Keep looping through our submatrix from left to right, then right to left
@@ -267,16 +271,82 @@ public class Harvester {
 					int currMagnitude = (int) Boss.gradientMat.get(y+stepsForward, i)[0];
 					int temp = Math.abs(currMagnitude - prevMagnitude);
 					Boss.gradientMat.put(y+stepsForward, i, temp);
+					tempM2.put(y+stepsForward, i, 1-prevMagnitude);
 		
 					//System.out.println(Boss.gradientMat.get(y+stepsForward, i)[0]);
 				}
 		
 	
 			}
-		//Mat temp = tempM.submat(rStart,rEnd,cStart,cEnd); // This is our left to right obstacle matrix only
-		//System.out.println(temp.dump());
+		Mat temp = tempM.submat(rStart,rEnd,cStart,cEnd); // This is our left to right obstacle matrix only
+		System.out.println("LEFT MATRIX = \n"+temp.dump());
+		Mat temp2 = tempM2.submat(rStart,rEnd,cStart,cEnd);
+		System.out.println("RIGHT MATRIX = \n"+temp2.dump()); // Right obstacle matrix only
+		
 		//Mat temp2 = Boss.gradientMat.submat(rStart,rEnd,cStart,cEnd);
 		//System.out.println("Gradient for next 10 steps=\n"+temp2.dump());
+		}
+		else if(orientation==0)
+		{
+			// Take a submatrix from out wholeField out using the center of the robot
+			Mat sensorView = new Mat();
+			int rStart = y-maxRange;
+			int rEnd = y;
+			int cStart = 0;
+			if(x-((int)Boss.grid_cell_w/2)>0)
+				cStart = x-((int)Boss.grid_cell_w/2);
+			int cEnd = Boss.canvasW;
+			if(x+((int)Boss.grid_cell_w/2)<Boss.canvasW)
+				cEnd = x+((int)Boss.grid_cell_w/2);
+			sensorView = Boss.wholeField.submat(rStart,rEnd,cStart,cEnd); // Create our submatrix
+			Boss.gradientMat.put(y, x, 0); // Setting our initial position to 0
+			for(int stepsForward=1; stepsForward<=maxRange; stepsForward++) // Look at one step forward
+			{
+				// NOTE: since sensorView is a submatrix, we need to figure out a way to map leftObsCoord(from our full map) to our submatrix
+				// Our offset = cStart
+				int leftObsCoord = x-cStart; // WITH RESPECT TO OUR SENSOR VIEW!!!
+				
+				while(sensorView.get(maxRange-stepsForward, leftObsCoord)[0]!=60 &&
+					  sensorView.get(maxRange-stepsForward, leftObsCoord)[1]!=120 &&
+					  sensorView.get(maxRange-stepsForward, leftObsCoord)[2]!=0 && leftObsCoord>1)
+				{
+					leftObsCoord--;
+				}
+				// Look right until you hit an obstacle
+				// Offset cEnd
+				int rightObsCoord = cEnd-x; // WITH RESPECT TO OUR SENSOR VIEW!!!
+				//System.out.println(maxRange-stepsForward + " " + rightObsCoord);
+				while(sensorView.get(maxRange-stepsForward, rightObsCoord)[0]!=60 &&
+					  sensorView.get(maxRange-stepsForward, rightObsCoord)[1]!=120 &&
+					  sensorView.get(maxRange-stepsForward, rightObsCoord)[2]!=0 && rightObsCoord<sensorView.cols()-1)
+				{
+					rightObsCoord++;
+				}
+				Boss.gradientMat.put(y-stepsForward, cStart+leftObsCoord, 100);
+				for(int i=cStart+leftObsCoord+1;i<cStart+rightObsCoord;i++) // As we move away from our obstacle from left to right, subtract 1 
+				{
+					int prevMagnitude = (int) Boss.gradientMat.get(y-stepsForward, i-1)[0];
+					Boss.gradientMat.put(y-stepsForward, i, prevMagnitude-1);
+					//System.out.println(Boss.gradientMat.get(y+stepsForward, i)[0]);
+				}
+				
+				// Our right obstacle is located at (y+stepsForward (row) ,rightObsCoord (col))
+				Boss.gradientMat.put(y-stepsForward, cStart+rightObsCoord, 100);
+				// Now do the same but starting from the right obstacle towards the left (using negative values)
+				
+				int prevMagnitude = 100;
+				for(int i=cStart+rightObsCoord-1;i>cStart+leftObsCoord;i--) // As we move away from our obstacle from left to right, subtract 1 
+				{
+					//int prevMagnitude = (int) Boss.gradientMat.get(y+stepsForward, i+1)[0];
+					prevMagnitude -= 1;
+					int currMagnitude = (int) Boss.gradientMat.get(y-stepsForward, i)[0];
+					int temp = Math.abs(currMagnitude - prevMagnitude);
+					Boss.gradientMat.put(y-stepsForward, i, temp);
+				}
+		
+			}
+			//Mat temp2 = Boss.gradientMat.submat(rStart,rEnd,cStart,cEnd);
+			//System.out.println("Gradient for next 10 steps=\n"+temp2.dump());
 		}
 		
 	}
@@ -296,8 +366,9 @@ public class Harvester {
 		// Look at our gradient for the next step
 		int min = 100; // min value
 		int nextX = -1; // to store our next x coord
-		int nextY = getY() + 1; // to store our next y coord
-		
+		int nextY = getY() + 1;
+		if(orientation==0)
+			nextY = getY() - 1; // to store our next y coord
 		//Figure out our min value in row(nextY) in our gradient
 		for(int i=cStart; i<cEnd; i++)
 		{

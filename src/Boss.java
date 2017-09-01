@@ -30,6 +30,7 @@ public class Boss {
 	int rows = 0; // # of rows in our grid
 	// Robots Array
 	static ArrayList<Harvester> robots = null;
+	boolean begin = true;
 	static boolean nextStep = false;
 	static boolean nextStep2 = false;
 	static boolean initBush = true;
@@ -154,6 +155,11 @@ public class Boss {
 			public void keyPressed(KeyEvent e) {
 				if(e.getKeyChar()=='n')
 				{
+					if(begin)
+					{
+						System.out.println("Starting...");
+						begin = false;
+					}
 					//System.out.println(stepsComplete);
 					if(stepsComplete<(canvasH-5))
 					{
@@ -188,6 +194,7 @@ public class Boss {
 						}
 						else
 						{
+							System.out.println("Complete!!");
 							// Save our gradient matrix!
 							Highgui.imwrite("C:/Users/Ina/Programming/workspace/StrawberryRobots/images/gradient.png", gradientMat);
 						}

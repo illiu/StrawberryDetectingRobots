@@ -143,6 +143,7 @@ public class RobotView extends JPanel{
 
 	private void detectStrawberries() {
 		squaresPerView = new ArrayList<ArrayList<ArrayList<Integer>>>();
+		System.out.println("Detecting Strawberries...");
 		for(int i=0; i<robots.size();i++)
 		{
 			//System.out.println("robot view: "+robots.get(i).getView());
@@ -152,7 +153,7 @@ public class RobotView extends JPanel{
 				squaresPerView.add(null);
 			else
 				squaresPerView.add(coords);
-			//System.out.println("Robot"+(i+1)+" found "+coords.size());
+			System.out.println("Robot"+(i+1)+" found "+coords.size());
 			//Convert mat into buffered image
 			MatOfByte bytemat = new MatOfByte();
 			Highgui.imencode(".jpg", img, bytemat);
